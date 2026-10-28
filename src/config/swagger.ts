@@ -1,0 +1,415 @@
+export const swaggerDocument = {
+  openapi: '3.0.3',
+  info: {
+    title: 'Transaction Ledger API',
+    version: '1.0.0',
+    description: 'REST API for account management, ledger transactions, and balance transfers.',
+    contact: {
+      name: 'Transaction Ledger Engineering Team',
+    },
+  },
+  servers: [
+    {
+      url: '/api/v1',
+      description: 'API v1 Base URL',
+    },
+  ],
+  paths: {
+    '/accounts': {
+      post: {
+        summary: 'Create a new account',
+        description: 'Creates a new account with unique ID and 0 initial balance. Client cannot set the initial balance.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                  name: {
+                    type: 'string',
+                    example: 'Alice Smith',
+                    description: 'Account holder name',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: {
+            description: 'Account created successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/AccountResponse',
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Validation Error',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/ErrorResponse',
+                },
+              },
+            },
+          },
+        },
+      },
+      get: {
+        summary: 'List all accounts',
+        description: 'Retrieves all accounts in descending order of creation.',
+        responses: {
+          200: {
+            description: 'List of accounts',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'array',
+                      items: {
+                        $ref: '#/components/schemas/Account',
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/accounts/{accountId}': {
+      get: {
+        summary: 'Get account details by ID',
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Account found',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/AccountResponse',
+                },
+              },
+            },
+          },
+          404: {
+            description: 'Account not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/accounts/{accountId}/balance': {
+      get: {
+        summary: 'Get current account balance',
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Account balance retrieved',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        account_id: { type: 'string', format: 'uuid', example: 'd3b07384-d113-467f-9b57-61c06d0fa851' },
+                        balance: { type: 'number', example: 150.0 },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          404: {
+            description: 'Account not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/accounts/{accountId}/transactions': {
+      post: {
+        summary: 'Add a transaction to an account',
+        description: 'Performs an atomic credit or debit transaction on the account.',
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['type', 'amount', 'description', 'reference_id'],
+                properties: {
+                  type: { type: 'string', enum: ['credit', 'debit'], example: 'credit' },
+                  amount: { type: 'number', example: 100.0, description: 'Positive amount with max 2 decimals' },
+                  description: { type: 'string', example: 'Salary Deposit' },
+                  reference_id: { type: 'string', example: 'TX-REF-1001', description: 'Unique reference per account' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: {
+            description: 'Transaction created and balance updated',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: { $ref: '#/components/schemas/Transaction' },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: 'Validation error' },
+          404: { description: 'Account not found' },
+          409: { description: 'Duplicate transaction (reference_id already exists for account)' },
+          422: { description: 'Insufficient funds for debit transaction' },
+        },
+      },
+      get: {
+        summary: 'Get transaction history for an account',
+        description: 'Retrieves transactions sorted latest-first with filtering and pagination.',
+        parameters: [
+          {
+            name: 'accountId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'type',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', enum: ['credit', 'debit'] },
+            description: 'Filter transactions by type',
+          },
+          {
+            name: 'page',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 1, minimum: 1 },
+            description: 'Current page number',
+          },
+          {
+            name: 'limit',
+            in: 'query',
+            required: false,
+            schema: { type: 'integer', default: 10, minimum: 1, maximum: 100 },
+            description: 'Number of items per page',
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Transaction history retrieved',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Transaction' },
+                    },
+                    pagination: { $ref: '#/components/schemas/PaginationMeta' },
+                  },
+                },
+              },
+            },
+          },
+          404: { description: 'Account not found' },
+        },
+      },
+    },
+    '/transactions': {
+      post: {
+        summary: 'Add a transaction (alternative direct endpoint)',
+        description: 'Accepts account_id in the request body.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['account_id', 'type', 'amount', 'description', 'reference_id'],
+                properties: {
+                  account_id: { type: 'string', format: 'uuid', example: 'd3b07384-d113-467f-9b57-61c06d0fa851' },
+                  type: { type: 'string', enum: ['credit', 'debit'], example: 'credit' },
+                  amount: { type: 'number', example: 100.0 },
+                  description: { type: 'string', example: 'Direct Deposit' },
+                  reference_id: { type: 'string', example: 'TX-REF-1002' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: { description: 'Transaction created' },
+          400: { description: 'Validation error' },
+          404: { description: 'Account not found' },
+          409: { description: 'Duplicate reference_id' },
+          422: { description: 'Insufficient funds' },
+        },
+      },
+    },
+    '/transfers': {
+      post: {
+        summary: 'Transfer money between accounts (Bonus)',
+        description: 'Atomically debits source account and credits destination account.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['source_account_id', 'destination_account_id', 'amount', 'reference_id', 'description'],
+                properties: {
+                  source_account_id: { type: 'string', format: 'uuid' },
+                  destination_account_id: { type: 'string', format: 'uuid' },
+                  amount: { type: 'number', example: 50.0 },
+                  reference_id: { type: 'string', example: 'TRF-REF-9001' },
+                  description: { type: 'string', example: 'Reimbursement' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          201: {
+            description: 'Transfer successful',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: true },
+                    data: { $ref: '#/components/schemas/Transfer' },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: 'Validation error (e.g. source and dest same)' },
+          404: { description: 'Source or destination account not found' },
+          409: { description: 'Duplicate transfer reference_id' },
+          422: { description: 'Insufficient balance in source account' },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      Account: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid', example: 'd3b07384-d113-467f-9b57-61c06d0fa851' },
+          name: { type: 'string', example: 'Alice Smith' },
+          balance: { type: 'number', example: 0.0 },
+          created_at: { type: 'string', format: 'date-time', example: '2026-10-28T17:00:00.000Z' },
+        },
+      },
+      AccountResponse: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: { $ref: '#/components/schemas/Account' },
+        },
+      },
+      Transaction: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          account_id: { type: 'string', format: 'uuid' },
+          type: { type: 'string', enum: ['credit', 'debit'] },
+          amount: { type: 'number', example: 50.0 },
+          description: { type: 'string', example: 'Grocery shopping' },
+          reference_id: { type: 'string', example: 'REF-001' },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      Transfer: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          source_account_id: { type: 'string', format: 'uuid' },
+          destination_account_id: { type: 'string', format: 'uuid' },
+          amount: { type: 'number', example: 30.0 },
+          reference_id: { type: 'string', example: 'TRF-001' },
+          description: { type: 'string', example: 'Lunch split' },
+          source_balance: { type: 'number', example: 70.0 },
+          destination_balance: { type: 'number', example: 80.0 },
+          created_at: { type: 'string', format: 'date-time' },
+        },
+      },
+      PaginationMeta: {
+        type: 'object',
+        properties: {
+          current_page: { type: 'integer', example: 1 },
+          page_size: { type: 'integer', example: 10 },
+          total_records: { type: 'integer', example: 25 },
+          total_pages: { type: 'integer', example: 3 },
+        },
+      },
+      ErrorResponse: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: false },
+          error: {
+            type: 'object',
+            properties: {
+              code: { type: 'string', example: 'INSUFFICIENT_FUNDS' },
+              message: { type: 'string', example: 'Transaction rejected: Insufficient balance' },
+              details: { type: 'object' },
+            },
+          },
+        },
+      },
+    },
+  },
+};
