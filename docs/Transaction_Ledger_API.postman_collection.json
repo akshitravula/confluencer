@@ -1,0 +1,153 @@
+{
+  "info": {
+    "name": "Transaction Ledger API",
+    "description": "Postman Collection for Full Stack Developer Assessment - Transaction Ledger System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "1. Create Account",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Smith\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/accounts",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "accounts"]
+            }
+          }
+        },
+        {
+          "name": "2. Get Account by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3000/api/v1/accounts/{{accountId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "accounts", "{{accountId}}"]
+            }
+          }
+        },
+        {
+          "name": "3. Get Account Balance",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3000/api/v1/accounts/{{accountId}}/balance",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "accounts", "{{accountId}}", "balance"]
+            }
+          }
+        },
+        {
+          "name": "4. List Accounts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3000/api/v1/accounts",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "accounts"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "1. Credit Transaction (+100)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"credit\",\n  \"amount\": 100.0,\n  \"description\": \"Initial deposit\",\n  \"reference_id\": \"REF-TX-1001\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/accounts/{{accountId}}/transactions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "accounts", "{{accountId}}", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "2. Debit Transaction (-30)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"debit\",\n  \"amount\": 30.0,\n  \"description\": \"Coffee purchase\",\n  \"reference_id\": \"REF-TX-1002\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/accounts/{{accountId}}/transactions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "accounts", "{{accountId}}", "transactions"]
+            }
+          }
+        },
+        {
+          "name": "3. Get Transaction History (Filtered & Paginated)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3000/api/v1/accounts/{{accountId}}/transactions?type=credit&page=1&limit=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "accounts", "{{accountId}}", "transactions"],
+              "query": [
+                { "key": "type", "value": "credit" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transfers (Bonus)",
+      "item": [
+        {
+          "name": "1. Transfer Money Between Accounts",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_account_id\": \"{{sourceAccountId}}\",\n  \"destination_account_id\": \"{{destAccountId}}\",\n  \"amount\": 30.0,\n  \"reference_id\": \"TRF-9001\",\n  \"description\": \"Shared expense payment\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/api/v1/transfers",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3000",
+              "path": ["api", "v1", "transfers"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
